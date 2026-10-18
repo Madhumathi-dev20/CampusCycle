@@ -15,10 +15,19 @@ import { supabase } from '@/lib/supabase'
 import { resolveCollegeId } from '@/lib/colleges'
 
 const profileSchema = z.object({
-  display_name: z.string().trim().min(2).max(50),
+  display_name: z.string().trim().min(2, 'Name must contain at least 2 characters').max(50),
   college_name: z.string().trim().min(2, 'Enter your college name').max(160, 'College name must be 160 characters or fewer'),
-  branch: z.string().max(100).optional(),
-  semester: z.coerce.number().int().min(1).max(12).optional(),
+  branch: z.string().trim().min(1, 'Enter your branch/course').max(100, 'Branch/course must be 100 characters or fewer'),
+  semester: z.coerce.number().int().min(1, 'Select your semester').max(12, 'Invalid semester'),
+  phone: z.string().trim()
+    .min(7, 'Enter your phone number')
+    .max(20, 'Phone number is too long')
+    .regex(/^\+?[0-9][0-9()\-\s]*[0-9]$/, 'Enter a valid phone number')
+    .refine(value => {
+      const digitCount = value.replace(/\D/g, '').length
+      return digitCount >= 7 && digitCount <= 15
+    }, 'Phone number must contain 7 to 15 digits'),
+  contact_email: z.string().trim().email('Enter a valid contact email address'),
 })
 type ProfileFormInput = z.input<typeof profileSchema>
 type ProfileForm = z.output<typeof profileSchema>
@@ -35,7 +44,9 @@ export function ProfilePage() {
       display_name: profile.display_name,
       college_name: profile.college?.name ?? '',
       branch: profile.branch ?? '',
-      semester: profile.semester ?? undefined,
+      semester: profile.semester ?? 1,
+      phone: profile.phone ?? '',
+      contact_email: profile.contact_email ?? '',
     } : undefined,
   })
 
@@ -52,10 +63,13 @@ export function ProfilePage() {
       display_name: values.display_name,
       college_id: collegeId,
       branch: values.branch || null,
-      semester: values.semester ?? null,
+      semester: values.semester,
+      phone: values.phone.trim(),
+      contact_email: values.contact_email.trim().toLowerCase(),
     }).eq('id', user.id)
     if (error) { toast.error(error.message); return }
     await fetchProfile(user.id)
+    await queryClient.invalidateQueries({ queryKey: ['listing-owner-contact'] })
     toast.success('Profile updated')
   }
 
@@ -80,12 +94,26 @@ export function ProfilePage() {
         <div className="flex items-center gap-4 pb-4 border-b border-slate-100 mb-5"><div className="size-16 rounded-full bg-emerald-100 text-emerald-700 font-bold text-xl flex items-center justify-center">{profile?.display_name?.[0]?.toUpperCase() ?? 'U'}</div><div><h2 className="text-lg font-bold text-slate-900">{profile?.display_name ?? 'Student'}</h2><p className="text-sm text-slate-500">{profile?.college_verified_at ? 'College email verified' : 'College membership is not verified'}</p></div></div>
         <form className="space-y-4" onSubmit={handleSubmit(save)}>
           <Input label="Display name" error={errors.display_name?.message} {...register('display_name')} />
-          <div className="flex items-center gap-2 text-xs text-slate-500"><Mail size={14} />Email is used for sign-in and is never shown on public listings.</div>
+          <Input label="Phone number" type="tel" placeholder="e.g. +91 98765 43210" error={errors.phone?.message} {...register('phone')} />
+          <Input label="Contact email" type="email" placeholder="you@example.com" error={errors.contact_email?.message} {...register('contact_email')} />
+
+          <div className="flex items-center gap-2 text-xs text-slate-500">
+            <Mail size={14} />
+              Your contact details help buyers reach you about your listings.
+          </div>
+
           <Input label="College" placeholder="Enter your college name" error={errors.college_name?.message} {...register('college_name')} />
           <Input label="Branch / department" error={errors.branch?.message} {...register('branch')} />
-          <Select label="Semester" error={errors.semester?.message} {...register('semester')}><option value="">Not specified</option>{Array.from({ length: 12 }, (_, index) => index + 1).map(value => <option key={value} value={value}>Semester {value}</option>)}</Select>
+
+          <Select label="Semester" error={errors.semester?.message} {...register('semester')}>
+          <option value="">Select semester</option>
+          {Array.from({ length: 12 }, (_, index) => index + 1).map(value => (
+          <option key={value} value={value}>Semester {value}</option>
+            ))}
+          </Select>
+
           <Button type="submit" loading={isSubmitting}>Save Profile</Button>
-        </form>
+      </form>
       </Card>
       <Card className="p-6 border-red-200">
         <h2 className="font-semibold text-red-700 flex items-center gap-2"><AlertTriangle size={17} /> Deactivate account</h2>

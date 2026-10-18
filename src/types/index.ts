@@ -61,6 +61,8 @@ export interface Profile {
   branch: string | null;
   semester: number | null;
   avatar_url: string | null;
+  phone: string | null;
+  contact_email: string | null;
   account_status: AccountStatus;
   college_verified_at: string | null;
   created_at: string;
@@ -73,6 +75,12 @@ export interface PublicProfile {
   college_id: string | null;
   avatar_url: string | null;
   college?: College;
+}
+
+export interface ListingOwnerContact {
+  owner_id: string;
+  phone: string | null;
+  contact_email: string | null;
 }
 
 export interface ListingImage {

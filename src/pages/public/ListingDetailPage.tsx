@@ -1,6 +1,7 @@
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { ArrowLeft, Heart, MapPin, Calendar, Clock, AlertCircle, MessageCircle } from 'lucide-react'
+import { ArrowLeft, Heart, MapPin, Calendar, Clock, AlertCircle, MessageCircle, Phone, Mail } from 'lucide-react'
 import { useListing, useToggleWishlist, useWishlist } from '@/hooks/useListings'
+import { useListingOwnerContact } from '@/hooks/useMarketplace'
 import { useAuthStore } from '@/store/authStore'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
@@ -22,6 +23,7 @@ export function ListingDetailPage() {
   const navigate = useNavigate()
   const { user } = useAuthStore()
   const { data: listing, isLoading, error } = useListing(id!)
+  const { data: ownerContact, isLoading: contactLoading, error: contactError } = useListingOwnerContact(id, user?.id)
   const { data: wishlist } = useWishlist(user?.id)
   const toggleWishlist = useToggleWishlist()
   const [activeImage, setActiveImage] = useState(0)
@@ -60,6 +62,15 @@ export function ListingDetailPage() {
     : '/placeholder-item.svg'
 
   const isAvailable = listing.availability_status === 'available'
+  const contact = ownerContact?.owner_id === listing.owner_id ? ownerContact : null
+  const phone = contact?.phone?.trim() ?? ''
+  const normalizedPhone = phone.replace(/[()\s-]/g, '')
+  const phoneHref = /^\+?\d{7,20}$/.test(normalizedPhone) ? normalizedPhone : ''
+  const email = contact?.contact_email?.trim() ?? ''
+  const emailMatch = email.match(/^([^@\s]+)@([a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+)$/i)
+  const emailHref = emailMatch
+    ? `mailto:${encodeURIComponent(emailMatch[1])}@${emailMatch[2]}`
+    : ''
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
@@ -165,14 +176,49 @@ export function ListingDetailPage() {
             </div>
           </div>
 
-          {/* Owner */}
-          <div className="flex items-center gap-3 p-3 border border-slate-200 rounded-xl mb-5">
-            <div className="size-10 rounded-full bg-emerald-100 text-emerald-700 font-bold flex items-center justify-center">
-              {listing.owner?.display_name?.[0]?.toUpperCase() ?? '?'}
+          {/* Owner and Contact Information */}
+          <div className="p-4 border border-slate-200 rounded-xl mb-5">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="size-10 rounded-full bg-emerald-100 text-emerald-700 font-bold flex items-center justify-center">{listing.owner?.display_name?.[0]?.toUpperCase() ?? '?'}</div>
+              <div>
+                <p className="text-sm font-semibold text-slate-800">{listing.owner?.display_name ?? 'Unknown'}</p>
+                <p className="text-xs text-slate-400">Item owner</p>
+              </div>
             </div>
-            <div>
-              <p className="text-sm font-semibold text-slate-800">{listing.owner?.display_name ?? 'Unknown'}</p>
-              <p className="text-xs text-slate-400">Item owner</p>
+            <div className="border-t border-slate-200 pt-3 space-y-3">
+              <p className="text-sm font-semibold text-slate-700">Contact Information</p>
+              {!user ? (
+                <p className="text-sm text-slate-500">
+                  <Link to="/login" className="text-emerald-700 hover:underline">Log in</Link> to view seller contact information.
+                </p>
+              ) : contactLoading ? (
+                <p className="text-sm text-slate-500">Loading contact information…</p>
+              ) : contactError ? (
+                <p className="text-sm text-slate-500">Unable to load contact information.</p>
+              ) : contact ? (
+                <>
+                  {phoneHref ? (
+                    <a href={`tel:${phoneHref}`} className="flex items-center gap-2 text-sm text-emerald-700 hover:underline">
+                      <Phone size={15} /><span>{phone}</span>
+                    </a>
+                  ) : (
+                    <p className="flex items-center gap-2 text-sm text-slate-500">
+                      <Phone size={15} /><span>Phone number not provided</span>
+                    </p>
+                  )}
+                  {emailHref ? (
+                    <a href={emailHref} className="flex items-center gap-2 text-sm text-emerald-700 hover:underline">
+                      <Mail size={15} /><span>{email}</span>
+                    </a>
+                  ) : (
+                    <p className="flex items-center gap-2 text-sm text-slate-500">
+                      <Mail size={15} /><span>Contact email not provided</span>
+                    </p>
+                  )}
+                </>
+              ) : (
+                <p className="text-sm text-slate-500">Seller contact information is unavailable.</p>
+              )}
             </div>
           </div>
 

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import type { AccountStatus, Category, College, Listing, PublicProfile, Request, Transaction, Notification, Report } from '@/types'
+import type { AccountStatus, Category, College, Listing, ListingOwnerContact, PublicProfile, Request, Transaction, Notification, Report } from '@/types'
 
 type AdminUserRow = {
   id: string
@@ -62,6 +62,30 @@ export function useNotifications(userId: string | undefined) {
       const { data, error } = await supabase.from('notifications').select('*, request:requests(requester_id, owner_id)').eq('recipient_id', userId!).order('created_at', { ascending: false }).limit(100)
       if (error) throw error
       return (data ?? []) as Notification[]
+    },
+  })
+}
+
+export function useListingOwnerContact(listingId: string | undefined, viewerId: string | undefined) {
+  return useQuery({
+    queryKey: ['listing-owner-contact', listingId, viewerId],
+    enabled: Boolean(listingId && viewerId),
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_listing_owner_contact', {
+        p_listing_id: listingId!,
+      })
+      if (error) {
+        if (import.meta.env.DEV) {
+          console.error('[Marketplace] Failed to load listing owner contact', {
+            message: error.message,
+            code: error.code,
+            details: error.details,
+            hint: error.hint,
+          })
+        }
+        throw error
+      }
+      return ((data ?? []) as ListingOwnerContact[])[0] ?? null
     },
   })
 }
