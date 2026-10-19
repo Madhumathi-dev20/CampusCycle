@@ -12,7 +12,7 @@ export function useListings(filters: ListingFilters = {}, page = 0, pageSize = 1
         p_search: filters.search?.trim() || null,
         p_listing_type: filters.listing_type || null,
         p_category_id: filters.category_id || null,
-        p_college_id: filters.college_name || null,
+        p_college_name: filters.college_name || null,
         p_condition: filters.condition || null,
         p_min_price: filters.min_price === '' ? null : filters.min_price ?? null,
         p_max_price: filters.max_price === '' ? null : filters.max_price ?? null,
@@ -89,7 +89,7 @@ export function useRecentListings(limit = 8) {
     queryKey: ['recent-listings', limit],
     queryFn: async () => {
       const { data: matches, error: searchError } = await supabase.rpc('search_listings', {
-        p_search: null, p_listing_type: null, p_category_id: null, p_college_id: null,
+        p_search: null, p_listing_type: null, p_category_id: null, p_college_name: null,
         p_condition: null, p_min_price: null, p_max_price: null, p_sort: 'newest', p_offset: 0, p_limit: limit,
       })
       if (searchError) throw searchError
@@ -111,7 +111,7 @@ export function useFeaturedByType(type: 'donate' | 'borrow', limit = 6) {
     queryKey: ['listings-by-type', type, limit],
     queryFn: async () => {
       const { data: matches, error: searchError } = await supabase.rpc('search_listings', {
-        p_search: null, p_listing_type: type, p_category_id: null, p_college_id: null,
+        p_search: null, p_listing_type: type, p_category_id: null, p_college_name: null,
         p_condition: null, p_min_price: null, p_max_price: null, p_sort: 'newest', p_offset: 0, p_limit: limit,
       })
       if (searchError) throw searchError
